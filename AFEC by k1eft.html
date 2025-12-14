@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AFEC by k1eft</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- updated font link for source code pro -->
+    <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* adjusted for PURE BLACK dark mode */
+            --primary-color: #6366F1; /* indigo 500 - for accents */
+            --secondary-color: #34D399; /* emerald 400 - for success/highlights */
+            --success-color: #10B981;
+            --warning-color: #FBBF24;
+            --error-color: #F87171; /* red 400 */
+            --bg-dark: #000000; /* PURE BLACK background */
+            --card-dark: #0A0A0A; /* Very dark gray for main cards */
+            --input-dark: #1A1A1A; /* Darker gray for inputs and inner elements */
+        }
+        body {
+            /* set source code pro and enforce lowercase text */
+            font-family: 'Source Code Pro', monospace;
+            background-color: var(--bg-dark); /* PURE BLACK */
+            color: #E2E8F0; /* light text */
+            text-transform: lowercase; /* apply lowercase to all text elements */
+        }
+
+        /* custom class for the main card background */
+        .bg-card-dark {
+            background-color: var(--card-dark);
+        }
+
+        /* custom scrollbar for subject list */
+        #subject-list-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        #subject-list-container::-webkit-scrollbar-thumb {
+            background-color: #333333; /* darker thumb */
+            border-radius: 4px;
+        }
+        #subject-list-container::-webkit-scrollbar-track {
+            background-color: var(--card-dark);
+        }
+        .grade-input {
+            appearance: textfield; /* hide default arrows on number inputs */
+        }
+        .grade-input::-webkit-outer-spin-button,
+        .grade-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        /* glow effect for cards */
+        .glow-card {
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.3), 0 0 5px rgba(99, 102, 241, 0.1);
+            transition: all 0.3s ease;
+        }
+        .glow-card:hover {
+            box-shadow: 0 0 25px rgba(99, 102, 241, 0.5), 0 0 10px rgba(99, 102, 241, 0.2);
+        }
+        
+        /* result panel gradient and glow */
+        #result-panel {
+            background: linear-gradient(135deg, #0A0A0A, #1A1A1A); /* Very dark gradient */
+            border: 1px solid #333333;
+            /* main result panel glow */
+            box-shadow: 0 0 30px rgba(165, 180, 252, 0.4), 0 0 10px rgba(165, 180, 252, 0.2); 
+            transition: all 0.3s ease;
+        }
+
+        /* subject item styling (flowy) */
+        .subject-item {
+            background-color: var(--input-dark); /* darker gray for separation */
+            border: 1px solid #222222;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .subject-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+        }
+
+        /* input styling */
+        .dark-input {
+            background-color: var(--input-dark); /* used for text/select inputs */
+            color: #E2E8F0;
+            border-color: #333333; /* Darker border */
+        }
+        .dark-input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.5);
+        }
+
+        /* animated button (flowy gradient hover) */
+        .animated-button {
+            background: linear-gradient(90deg, #6366F1 0%, #8B5CF6 50%, #6366F1 100%); /* indigo to violet, repeating */
+            background-size: 200% 100%;
+            transition: background-position 0.4s ease, box-shadow 0.4s ease;
+        }
+        .animated-button:hover {
+            background-position: -100% 0; /* shifts gradient for "flow" */
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.6);
+        }
+
+        /* verdict colors (adjusted for dark background) */
+        .verdict-success { color: var(--secondary-color); text-shadow: 0 0 5px rgba(52, 211, 153, 0.5); }
+        .verdict-warning { color: var(--warning-color); text-shadow: 0 0 5px rgba(251, 191, 36, 0.5); }
+        .verdict-error { color: var(--error-color); text-shadow: 0 0 5px rgba(248, 113, 113, 0.5); }
+    </style>
+</head>
+<body class="p-4 md:p-8 min-h-screen">
+
+    <div id="app-container" class="max-w-4xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-white mb-2 tracking-wider">academic failure estimation calculator by k1eft</h1>
+            <p class="text-gray-400">made by k1eft with love... i think. calculate your failures to see if you actually made it in life or not.</p>
+        </header>
+
+        <!-- configuration panel (top) -->
+        <div class="bg-card-dark p-5 sm:p-6 rounded-xl shadow-lg mb-6 border border-[#222222] glow-card">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                
+                <!-- country selector (now 1/3 width) -->
+                <div class="w-full md:w-1/3">
+                    <label for="country-select" class="block text-sm font-medium text-gray-300 mb-1">
+                        region / standard
+                    </label>
+                    <select id="country-select" onchange="handleCountryChange(event)"
+                        class="mt-1 block w-full pl-3 pr-10 py-2 text-base dark-input sm:text-sm rounded-lg shadow-sm transition duration-150 ease-in-out">
+                        <!-- options will be populated by js -->
+                    </select>
+                </div>
+
+                <!-- new: weighting toggle (1/3 width) -->
+                <div class="w-full md:w-1/3 flex items-center pt-5 md:pt-0">
+                    <div class="relative flex items-start">
+                        <div class="flex items-center h-5">
+                            <input id="weighted-toggle" type="checkbox" onchange="handleWeightingChange(event)" checked
+                                class="focus:ring-indigo-500 h-4 w-4 text-indigo-400 border-[#333333] rounded transition duration-150 ease-in-out bg-slate-700 cursor-pointer">
+                        </div>
+                        <div class="ml-3 text-sm">
+                            <label for="weighted-toggle" class="font-medium text-gray-300 cursor-pointer">
+                                use units/weight
+                            </label>
+                            <p class="text-gray-500 text-xs">for weighted average (gpa, ga)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- rounding option (now 1/3 width) -->
+                <div class="w-full md:w-1/3 flex items-center pt-5 md:pt-0">
+                    <div class="relative flex items-start">
+                        <div class="flex items-center h-5">
+                            <input id="round-up-checkbox" type="checkbox" onchange="handleRoundingChange(event)"
+                                class="focus:ring-indigo-500 h-4 w-4 text-indigo-400 border-[#333333] rounded transition duration-150 ease-in-out bg-slate-700 cursor-pointer">
+                        </div>
+                        <div class="ml-3 text-sm">
+                            <label for="round-up-checkbox" class="font-medium text-gray-300 cursor-pointer">
+                                round result to nearest integer
+                            </label>
+                            <p class="text-gray-500 text-xs">basically round up if bobo ka</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- main content area -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- subject list panel (2/3 width on desktop) -->
+            <div class="lg:col-span-2 bg-card-dark p-5 sm:p-6 rounded-xl shadow-lg border border-[#222222] glow-card">
+                <h2 class="text-xl font-semibold text-gray-200 mb-4 flex items-center justify-between">
+                    subjects & grades
+                    <button onclick="addSubject()" 
+                        class="ml-4 animated-button text-white font-bold py-1 px-3 rounded-lg shadow-md transition duration-300 ease-in-out text-sm flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                        add subject
+                    </button>
+                </h2>
+                
+                <!-- subject list container -->
+                <div id="subject-list-container" class="max-h-96 overflow-y-auto pr-2 space-y-4">
+                    <!-- subject rows will be injected here -->
+                </div>
+
+                <p id="weight-label" class="text-sm text-gray-400 mt-4 text-center">
+                    total units/weights: 0.0
+                </p>
+
+                <!-- message box for errors/warnings (hidden by default) -->
+                <div id="message-box" class="mt-4 hidden p-3 rounded-lg text-sm transition-all duration-300"></div>
+
+            </div>
+            
+            <!-- results panel (1/3 width on desktop) -->
+            <div class="lg:col-span-1">
+                <div id="result-panel" class="sticky top-8 p-6 rounded-xl shadow-xl">
+                    <h2 id="result-title" class="text-xl font-bold text-indigo-300 mb-4">
+                        general average (ga)
+                    </h2>
+                    
+                    <!-- calculated grade -->
+                    <div class="text-center mb-4">
+                        <p id="calculated-grade" class="text-6xl font-extrabold text-emerald-400 drop-shadow-lg">
+                            --
+                        </p>
+                        <p id="scale-info" class="text-sm text-indigo-200 mt-1 font-semibold">
+                            (on a 100-point scale)
+                        </p>
+                    </div>
+
+                    <!-- verdict -->
+                    <div id="verdict-card" class="bg-card-dark p-4 rounded-xl shadow-inner border border-[#222222] mt-6">
+                        <p class="text-sm font-semibold text-gray-300 mb-1">academic verdict:</p>
+                        <p id="verdict-text" class="text-lg font-bold italic text-gray-400">
+                            bobo ka ba? kailangan ng grades para macalcu natin average mo inaneto...
+                        </p>
+                    </div>
+
+                    <!-- additional scale (e.g., gpa) -->
+                    <div id="additional-scale" class="mt-4 pt-4 border-t border-[#222222] hidden">
+                        <p id="additional-scale-title" class="text-sm font-semibold text-indigo-300 mb-1">
+                            us gpa equivalent:
+                        </p>
+                        <p id="additional-scale-value" class="text-3xl font-extrabold text-emerald-300">
+                            --
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- global state and configuration ---
+        const COUNTRY_DATA = {
+            'PH': {
+                name: 'uy pilipins!!!!1!!11!',
+                label: 'general average (ga)',
+                scaleLabel: '(on a 100-point scale)',
+                verdict: (score) => {
+                    if (score >= 90) return { text: 'wow magaling! nasa honors ka na or higher', colorClass: 'verdict-success' };
+                    if (score >= 85) return { text: 'ok good grades nice one', colorClass: 'verdict-success' };
+                    if (score >= 80) return { text: 'galeng a nice grades bro', colorClass: 'verdict-warning' };
+                    if (score >= 75) return { text: 'barely passed insane', colorClass: 'verdict-warning' };
+                    return { text: 'tangina ano yan', colorClass: 'verdict-error' };
+                }
+            },
+            'US': {
+                name: 'us babyy what the f*ck is a kilometer?!?!?!',
+                label: 'overall grade point average (gpa)',
+                scaleLabel: '(on a 4.0 scale)',
+                additionalScale: true,
+                verdict: (score) => {
+                    const gpa = score / 25 - 0.4; 
+                    if (score >= 93) return { text: 'wow!!! thats an a boi', colorClass: 'verdict-success' };
+                    if (score >= 80) return { text: 'ok thats a b, you\'re gettin there', colorClass: 'verdict-success' };
+                    if (score >= 70) return { text: 'c... u get a c for dat', colorClass: 'verdict-warning' };
+                    return { text: 'what the actual fuck bro', colorClass: 'verdict-error' };
+                }
+            },
+            'UK': {
+                name: 'thee fokin unoighted keengdum meyt',
+                label: 'average mark',
+                scaleLabel: '(on a 100-point scale)',
+                verdict: (score) => {
+                    if (score >= 70) return { text: 'what an outstanding chap we got here', colorClass: 'verdict-success' };
+                    if (score >= 60) return { text: 'second class honour i see', colorClass: 'verdict-success' };
+                    if (score >= 50) return { text: 'good show, chap', colorClass: 'verdict-warning' };
+                    if (score >= 40) return { text: 'passing mark, bloke', colorClass: 'verdict-warning' };
+                    return { text: 'you deserve nothing, you scallywag', colorClass: 'verdict-error' };
+                }
+            }
+        };
+
+        let state = {
+            subjects: [
+                { id: crypto.randomUUID(), name: 'mathematics', grade: 92, weight: 3.0 },
+                { id: crypto.randomUUID(), name: 'science', grade: 88, weight: 3.0 },
+                { id: crypto.randomUUID(), name: 'english', grade: 90, weight: 3.0 },
+            ],
+            countryCode: 'PH', // default country
+            isRounded: false,
+            isWeighted: true,
+        };
+
+        // --- core calculation logic ---
+
+        /**
+         * calculates the weighted or simple general average (ga).
+         * @returns {{ga: number, totalWeighted: number, totalWeight: number, validSubjects: number}}
+         */
+        function calculateGeneralAverage() {
+            let totalWeighted = 0;
+            let totalWeight = 0;
+            let validSubjects = 0;
+
+            state.subjects.forEach(subject => {
+                const grade = parseFloat(subject.grade);
+                
+                // determine the weight to use based on the toggle state
+                let weight = 1.0; // simple average default weight
+                if (state.isWeighted) {
+                    // use the subject's input weight if weighted mode is on
+                    weight = parseFloat(subject.weight); 
+                }
+
+                // only include subjects with valid grade (0-100) and positive weight
+                if (!isNaN(grade) && grade >= 0 && grade <= 100 && !isNaN(weight) && weight > 0) {
+                    totalWeighted += grade * weight;
+                    totalWeight += weight;
+                    validSubjects++;
+                }
+            });
+
+            const ga = totalWeight > 0 ? totalWeighted / totalWeight : 0;
+
+            return {
+                ga: ga,
+                totalWeighted: totalWeighted,
+                totalWeight: totalWeight,
+                validSubjects: validSubjects
+            };
+        }
+
+        // --- event handlers ---
+
+        function handleGradeChange(id, field, value) {
+            const index = state.subjects.findIndex(s => s.id === id);
+            if (index !== -1) {
+                // ensure grade and weight are numeric and within valid range
+                if (field === 'grade') {
+                    const numVal = parseFloat(value);
+                    state.subjects[index].grade = (isNaN(numVal) || numVal < 0) ? '' : Math.min(numVal, 100);
+                } else if (field === 'weight') {
+                    const numVal = parseFloat(value);
+                    state.subjects[index].weight = (isNaN(numVal) || numVal < 0) ? '' : numVal;
+                } else if (field === 'name') {
+                    // ensure subject name is stored in lowercase to match the theme
+                    state.subjects[index].name = value.toLowerCase(); 
+                }
+                renderResults();
+            }
+        }
+
+        function handleCountryChange(event) {
+            state.countryCode = event.target.value;
+            renderResults();
+        }
+
+        function handleRoundingChange(event) {
+            state.isRounded = event.target.checked;
+            renderResults();
+        }
+
+        function handleWeightingChange(event) {
+            state.isWeighted = event.target.checked;
+            renderApp(); // rerender full app to update input states and results
+        }
+
+        function addSubject() {
+            state.subjects.push({
+                id: crypto.randomUUID(),
+                name: '',
+                grade: '',
+                weight: 3.0
+            });
+            renderApp(); // rerender full list to add new input row
+            // scroll to bottom
+            const container = document.getElementById('subject-list-container');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function removeSubject(id) {
+            state.subjects = state.subjects.filter(s => s.id !== id);
+            renderApp();
+        }
+
+        // --- rendering functions ---
+
+        /**
+         * converts a 100-point score to a rough 4.0 gpa scale (used for us only).
+         * note: this is a simplified, non-standard conversion for display purposes.
+         * 100 -> 4.0, 90 -> 3.5, 80 -> 3.0, 70 -> 2.5, 60 -> 2.0
+         * @param {number} score - the 100-point average.
+         * @returns {string} the formatted gpa.
+         */
+        function toGPA(score) {
+            if (score === 0) return '0.00';
+            const gpa = Math.max(0, Math.min(4.0, (score * 0.05) - 1.0)); // adjusting formula for better range
+            return gpa.toFixed(2);
+        }
+
+
+        function renderResults() {
+            const { ga, totalWeight, validSubjects } = calculateGeneralAverage();
+            const country = COUNTRY_DATA[state.countryCode];
+            let finalGA = ga;
+
+            const calculatedGradeEl = document.getElementById('calculated-grade');
+            const verdictTextEl = document.getElementById('verdict-text');
+            const resultTitleEl = document.getElementById('result-title');
+            const scaleInfoEl = document.getElementById('scale-info');
+            const weightLabelEl = document.getElementById('weight-label');
+            const additionalScaleEl = document.getElementById('additional-scale');
+            const additionalScaleValueEl = document.getElementById('additional-scale-value');
+            const additionalScaleTitleEl = document.getElementById('additional-scale-title');
+            
+            // update mode/total weight label
+            if (state.isWeighted) {
+                weightLabelEl.textContent = `total units/weights: ${totalWeight.toFixed(1)} (${validSubjects} subjects)`;
+            } else {
+                weightLabelEl.textContent = `calculation mode: simple average (${validSubjects} subjects)`;
+            }
+
+            resultTitleEl.textContent = country.label;
+            scaleInfoEl.textContent = country.scaleLabel;
+            
+
+            // 1. determine the final grade
+            if (ga > 0) {
+                if (state.isRounded) {
+                    finalGA = Math.round(ga);
+                    calculatedGradeEl.textContent = finalGA.toFixed(0);
+                } else {
+                    calculatedGradeEl.textContent = ga.toFixed(2);
+                }
+            } else {
+                calculatedGradeEl.textContent = '--';
+                verdictTextEl.textContent = 'bobo ka ba? kailangan ng grades para macalcu natin average mo inaneto...';
+                verdictTextEl.classList.remove('verdict-success', 'verdict-warning', 'verdict-error');
+                verdictTextEl.classList.add('text-gray-400'); // neutral color for dark mode
+                additionalScaleEl.classList.add('hidden');
+                return; // exit if no valid subjects
+            }
+
+            // 2. apply verdict
+            const verdict = country.verdict(ga);
+            // update verdict text color class
+            verdictTextEl.classList.remove('text-gray-400', 'verdict-success', 'verdict-warning', 'verdict-error');
+            verdictTextEl.textContent = verdict.text;
+            verdictTextEl.classList.add(verdict.colorClass);
+
+
+            // 3. handle additional scale (gpa)
+            if (country.additionalScale && state.countryCode === 'US') {
+                additionalScaleEl.classList.remove('hidden');
+                additionalScaleTitleEl.textContent = `us gpa equivalent (based on ${state.isRounded ? 'rounded' : 'weighted'} avg):`;
+                additionalScaleValueEl.textContent = toGPA(finalGA);
+            } else {
+                additionalScaleEl.classList.add('hidden');
+            }
+        }
+
+
+        function renderSubjectList() {
+            const listContainer = document.getElementById('subject-list-container');
+            listContainer.innerHTML = ''; // clear existing list
+
+            const isWeightedMode = state.isWeighted;
+            const weightLabelText = isWeightedMode ? 'units/weight' : 'weight disabled (avg: 1.0)';
+            
+            // classes for inputs when disabled in simple average mode
+            const disabledInputClasses = 'bg-gray-800 text-gray-500 cursor-not-allowed border-gray-700';
+            // Adjusted classes for pure black theme: using var(--input-dark)
+            const enabledInputClasses = 'dark-input focus:ring-indigo-500 focus:border-indigo-500';
+
+            state.subjects.forEach(subject => {
+                const div = document.createElement('div');
+                div.className = 'flex flex-col sm:flex-row gap-2 sm:gap-4 items-center p-3 rounded-lg subject-item';
+                
+                const weightInputClass = isWeightedMode ? enabledInputClasses : disabledInputClasses;
+                
+                div.innerHTML = `
+                    <!-- subject name -->
+                    <div class="flex-grow w-full">
+                        <label class="sr-only">subject name</label>
+                        <input type="text" value="${subject.name}" placeholder="subject name (e.g., algebra)"
+                            oninput="handleGradeChange('${subject.id}', 'name', this.value)"
+                            class="w-full border p-2 rounded-lg text-sm transition duration-150 ${enabledInputClasses}">
+                    </div>
+                    
+                    <!-- grade -->
+                    <div class="w-full sm:w-28 flex-shrink-0">
+                        <label for="grade-${subject.id}" class="block text-xs font-medium text-gray-400">grade (0-100)</label>
+                        <input id="grade-${subject.id}" type="number" value="${subject.grade}" min="0" max="100" step="0.1"
+                            oninput="handleGradeChange('${subject.id}', 'grade', this.value)"
+                            class="grade-input w-full border p-2 rounded-lg text-sm font-semibold text-center transition duration-150 ${enabledInputClasses}">
+                    </div>
+
+                    <!-- weight/units -->
+                    <div class="w-full sm:w-28 flex-shrink-0">
+                        <label for="weight-${subject.id}" class="block text-xs font-medium text-gray-400">${weightLabelText}</label>
+                        <input id="weight-${subject.id}" type="number" value="${subject.weight}" min="0.5" step="0.5"
+                            oninput="handleGradeChange('${subject.id}', 'weight', this.value)"
+                            class="grade-input w-full border p-2 rounded-lg text-sm font-semibold text-center transition duration-150 ${weightInputClass}" 
+                            ${isWeightedMode ? '' : 'disabled'}>
+                    </div>
+
+                    <!-- delete button -->
+                    <div class="w-full sm:w-10 flex-shrink-0">
+                        <button onclick="removeSubject('${subject.id}')"
+                            class="w-full sm:w-10 mt-3 sm:mt-4 text-gray-500 hover:text-red-400 p-2 rounded-lg transition duration-150 ease-in-out">
+                            <svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </div>
+                `;
+                listContainer.appendChild(div);
+            });
+        }
+
+        function renderCountrySelector() {
+            const selectEl = document.getElementById('country-select');
+            selectEl.innerHTML = '';
+            
+            Object.keys(COUNTRY_DATA).forEach(code => {
+                const option = document.createElement('option');
+                option.value = code;
+                option.textContent = COUNTRY_DATA[code].name;
+                if (code === state.countryCode) {
+                    option.selected = true;
+                }
+                selectEl.appendChild(option);
+            });
+        }
+
+        function renderApp() {
+            renderCountrySelector();
+            renderSubjectList();
+            renderResults();
+            document.getElementById('round-up-checkbox').checked = state.isRounded;
+            document.getElementById('weighted-toggle').checked = state.isWeighted; // initialize new toggle state
+        }
+
+        // --- initialization ---
+
+        window.onload = renderApp;
+
+        // make functions globally accessible for html event attributes
+        window.handleGradeChange = handleGradeChange;
+        window.handleCountryChange = handleCountryChange;
+        window.handleRoundingChange = handleRoundingChange;
+        window.handleWeightingChange = handleWeightingChange; 
+        window.addSubject = addSubject;
+        window.removeSubject = removeSubject;
+
+    </script>
+</body>
+</html>
